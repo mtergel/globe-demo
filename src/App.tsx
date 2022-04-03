@@ -1,12 +1,15 @@
+import { OrbitControls } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { useEffect, useRef } from "react";
+import { InstancedMesh, Object3D } from "three";
+import { DEG2RAD } from "three/src/math/MathUtils";
 import "./App.css";
 import glowUrl from "./glow.svg";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { DEG2RAD } from "three/src/math/MathUtils";
 
 interface AppProps {}
 
 const rows = 180;
+
 const dotDensity = 0.01;
 const globeRadius = 2;
 
@@ -17,10 +20,16 @@ for (let lat = -90; lat <= 90; lat += 180 / rows) {
   const circumference = radius * Math.PI * 2;
   const dotsForLat = circumference * dotDensity;
   for (let x = 0; x < dotsForLat; x++) {
-    const long = -180 + (x * 360) / dotsForLat;
-    // if (!this.visibilityForCoordinate(long, lat)) continue;
-    // Setup and save circle matrix data
-    circleData.push({ long, lat });
+    for (let longI = 0; longI >= -360; longI -= 20) {
+      const long = longI + (x * 360) / dotsForLat;
+
+      // TODO
+      // add this later when found image
+      // if (!this.visibilityForCoordinate(long, lat)) continue;
+
+      // Setup and save circle matrix data
+      circleData.push({ long, lat });
+    }
   }
 }
 
@@ -38,7 +47,37 @@ const createCircle = (lat: number, long: number) => {
   };
 };
 
-// 48.856700, 2.350800
+const Countries = () => {
+  const ref = useRef<InstancedMesh>();
+  const count = circleData.length;
+  let temp = new Object3D();
+
+  useEffect(() => {
+    // Set positions
+    for (let i = 0; i < count; i++) {
+      const id = i + 1;
+      const { position, rotation } = createCircle(
+        circleData[i].lat,
+        circleData[i].long
+      );
+      temp.position.set(position[0], position[1], position[2]);
+      temp.rotation.set(rotation[0], rotation[1], rotation[2]);
+      temp.updateMatrix();
+      ref.current!.setMatrixAt(id, temp.matrix);
+    }
+
+    // Update the instance
+    ref.current!.instanceMatrix.needsUpdate = true;
+
+    // eslint-disable-next-line
+  }, []);
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, count]}>
+      <coneBufferGeometry args={[dotDensity, dotDensity * 2, 5]} />
+      <meshStandardMaterial color="#ffffff" />
+    </instancedMesh>
+  );
+};
 
 const App: React.FC<AppProps> = () => {
   return (
@@ -64,12 +103,13 @@ const App: React.FC<AppProps> = () => {
               <sphereGeometry args={[globeRadius, 32, 16]} />
               <meshStandardMaterial color="#1d2460" />
             </mesh>
-            {circleData.map((i, index) => (
+            <Countries />
+            {/* {circleData.map((i, index) => (
               <mesh key={index} {...createCircle(i.lat, i.long)}>
-                <sphereGeometry args={[dotDensity]} />
+                <sphereBufferGeometry args={[dotDensity]} />
                 <meshStandardMaterial color="#ffffff" />
               </mesh>
-            ))}
+            ))} */}
           </Canvas>
         </div>
       </div>
