@@ -40,3 +40,7 @@
   height: 900px;
   width: 900px;
 }
+
+.hidden {
+  display: none;
+}
