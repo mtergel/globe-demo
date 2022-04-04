@@ -9,30 +9,9 @@ import worldUrl from "./map.png";
 
 interface AppProps {}
 
-const rows = 120;
-
+const rows = 90;
 const dotDensity = 0.01;
 const globeRadius = 2;
-
-// let circleData: { long: number; lat: number }[] = [];
-
-// for (let lat = -90; lat <= 90; lat += 180 / rows) {
-//   const radius = Math.cos(Math.abs(lat) * DEG2RAD) * 2;
-//   const circumference = radius * Math.PI * 2;
-//   const dotsForLat = circumference * dotDensity;
-//   for (let x = 0; x < dotsForLat; x++) {
-//     for (let longI = 0; longI >= -360; longI -= 20) {
-//       const long = longI + (x * 360) / dotsForLat;
-
-//       // TODO
-//       // add this later when found image
-//       // if (!this.visibilityForCoordinate(long, lat)) continue;
-
-//       // Setup and save circle matrix data
-//       circleData.push({ long, lat });
-//     }
-//   }
-// }
 
 const createCircle = (lat: number, long: number) => {
   let latRad = lat * (Math.PI / 180);
@@ -87,7 +66,9 @@ const IMAGE_HEIGHT = 200;
 
 // fix this
 const coords2pix = (lat: number, long: number) => {
-  let x = Math.abs((long + 180) * (IMAGE_WIDTH / 360));
+  let x = (long + 180) * (IMAGE_WIDTH / 360);
+
+  // this is causing Infinity to appear
   // let latRad = (lat * Math.PI) / 180;
   // let mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
   // let y = IMAGE_HEIGHT / 2 - (IMAGE_WIDTH * mercN) / (2 * Math.PI);
@@ -112,7 +93,7 @@ const App: React.FC<AppProps> = () => {
       const image = new Image();
       image.src = worldUrl;
       image.onload = () => {
-        context.drawImage(image, 0, 0, 400, 200);
+        context.drawImage(image, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
         setImage(context);
       };
     }
@@ -130,24 +111,24 @@ const App: React.FC<AppProps> = () => {
 
   useEffect(() => {
     if (image) {
-      let tmp = [];
+      let dots = [];
       for (let lat = -90; lat <= 90; lat += 180 / rows) {
         const radius = Math.cos(Math.abs(lat) * DEG2RAD) * 2;
         const circumference = radius * Math.PI * 2;
         const dotsForLat = circumference * dotDensity;
         for (let x = 0; x < dotsForLat; x++) {
-          for (let longI = 90; longI >= -90; longI -= 180 / rows) {
+          for (let longI = 180; longI >= -180; longI -= 180 / rows) {
             const long = longI + (x * 360) / dotsForLat;
 
             if (visibilityForCoordinate(lat, long)) continue;
 
             // Setup and save circle matrix data
-            tmp.push({ lat, long });
+            dots.push({ lat, long });
           }
         }
       }
 
-      setCircleData(tmp);
+      setCircleData(dots);
     }
     // eslint-disable-next-line
   }, [image]);
@@ -158,7 +139,13 @@ const App: React.FC<AppProps> = () => {
         <div></div>
         <img alt="hero-glow" src={glowUrl} className="hero-glow" />
         <div className="globe-canvas-container">
-          <canvas id="world" ref={worldCanvas} className="hidden" />
+          <canvas
+            id="world"
+            height={IMAGE_HEIGHT}
+            width={IMAGE_WIDTH}
+            ref={worldCanvas}
+            className="hidden"
+          />
           <Canvas className="webgl-canvas" fallback={null}>
             <OrbitControls />
             <ambientLight intensity={0.5} />
