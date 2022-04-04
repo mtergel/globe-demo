@@ -1,7 +1,7 @@
-import { OrbitControls } from "@react-three/drei";
+import { CubicBezierLine, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { InstancedMesh, Object3D } from "three";
+import { InstancedMesh, Object3D, Vector3 } from "three";
 import { DEG2RAD } from "three/src/math/MathUtils";
 import "./App.css";
 import glowUrl from "./glow.svg";
@@ -64,7 +64,6 @@ const Countries: React.FC<{ circleData: { lat: number; long: number }[] }> = ({
 const IMAGE_WIDTH = 400;
 const IMAGE_HEIGHT = 200;
 
-// fix this
 const coords2pix = (lat: number, long: number) => {
   let x = (long + 180) * (IMAGE_WIDTH / 360);
 
@@ -78,6 +77,16 @@ const coords2pix = (lat: number, long: number) => {
 
   return { x, y };
 };
+
+function map(
+  x: number,
+  in_min: number,
+  in_max: number,
+  out_min: number,
+  out_max: number
+) {
+  return ((x - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+}
 
 const App: React.FC<AppProps> = () => {
   const [image, setImage] = useState<CanvasRenderingContext2D | null>(null);
@@ -112,13 +121,15 @@ const App: React.FC<AppProps> = () => {
   useEffect(() => {
     if (image) {
       let dots = [];
+
       for (let lat = -90; lat <= 90; lat += 180 / rows) {
         const radius = Math.cos(Math.abs(lat) * DEG2RAD) * 2;
         const circumference = radius * Math.PI * 2;
         const dotsForLat = circumference * dotDensity;
         for (let x = 0; x < dotsForLat; x++) {
+          // maybe move this loop up top?
           for (let longI = 180; longI >= -180; longI -= 180 / rows) {
-            const long = longI + (x * 360) / dotsForLat;
+            const long = -longI + (x * 360) / dotsForLat;
 
             if (visibilityForCoordinate(lat, long)) continue;
 
@@ -132,6 +143,37 @@ const App: React.FC<AppProps> = () => {
     }
     // eslint-disable-next-line
   }, [image]);
+
+  const curveStart = createCircle(46.86, 103.83);
+  let startPoint = new Vector3(
+    curveStart.position[0],
+    curveStart.position[1],
+    curveStart.position[2]
+  );
+
+  const curveEnd = createCircle(36, 138);
+  let endPoint = new Vector3(
+    curveEnd.position[0],
+    curveEnd.position[1],
+    curveEnd.position[2]
+  );
+
+  let dist = startPoint.distanceTo(endPoint);
+  let xC = 0.5 * (curveStart.position[0] + curveEnd.position[0]);
+  let yC = 0.5 * (curveStart.position[1] + curveEnd.position[1]);
+  let zC = 0.5 * (curveStart.position[2] + curveEnd.position[2]);
+
+  let midPoint = new Vector3(xC, yC, zC);
+  let smoothDist = map(dist, 0, 5, 0, 15 / dist);
+
+  midPoint.setLength(globeRadius * smoothDist);
+  let curveA = startPoint.clone();
+  let curveB = endPoint.clone();
+  curveA.add(midPoint);
+  curveB.add(midPoint);
+
+  curveA.setLength(globeRadius * smoothDist);
+  curveB.setLength(globeRadius * smoothDist);
 
   return (
     <div className="container">
@@ -164,7 +206,24 @@ const App: React.FC<AppProps> = () => {
               <meshStandardMaterial color="#1d2460" />
             </mesh>
             {circleData && circleData.length > 0 && (
-              <Countries circleData={circleData} />
+              <>
+                <Countries circleData={circleData} />
+                <mesh {...curveStart}>
+                  <sphereBufferGeometry args={[dotDensity * 2]} />
+                  <meshStandardMaterial color="orange" />
+                </mesh>
+                <mesh {...curveEnd}>
+                  <sphereBufferGeometry args={[dotDensity * 2]} />
+                  <meshStandardMaterial color="orange" />
+                </mesh>
+                <CubicBezierLine
+                  start={curveStart.position}
+                  end={curveEnd.position}
+                  midA={curveA}
+                  midB={curveB}
+                  color="#E879F9"
+                />
+              </>
             )}
           </Canvas>
         </div>
