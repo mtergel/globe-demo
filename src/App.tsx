@@ -10,10 +10,9 @@ import {
 } from "three";
 import { DEG2RAD } from "three/src/math/MathUtils";
 import "./App.css";
-import data from "./data.json";
 import glowUrl from "./glow.svg";
 import worldUrl from "./map.png";
-import * as THREE from "three";
+import data from "./data.json";
 
 interface AppProps {}
 
@@ -124,6 +123,7 @@ const PullRequests: React.FC<PullRequestsProps> = ({ index }) => {
   const item = data[index];
   const [curve, setCurve] = useState<CubicBezierCurve3 | null>(null);
   const geometryRef = useRef<TubeGeometry>(null);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     const { startLocation, ctrl1, ctrl2, endLocation } = getCurve(
@@ -144,25 +144,55 @@ const PullRequests: React.FC<PullRequestsProps> = ({ index }) => {
     // eslint-disable-next-line
   }, []);
 
-  useFrame((i) => {
-    if (geometryRef.current) {
-      geometryRef.current.setDrawRange(
-        0,
-        THREE.MathUtils.lerp(
-          geometryRef.current.drawRange.count === Infinity
-            ? 0
-            : geometryRef.current.drawRange.count,
-          geometryRef.current.index!.count,
-          0.01
-        )
-      );
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShow(true);
+    }, Math.random() * 20 * 1000);
+
+    return () => clearTimeout(timeout);
+
+    // eslint-disable-next-line
+  }, [show]);
+
+  useFrame((state, delta) => {
+    if (geometryRef.current && show) {
+      let endNow =
+        geometryRef.current.drawRange.count === Infinity
+          ? 0
+          : geometryRef.current.drawRange.count;
+      if (endNow >= geometryRef.current.index!.count) {
+        // start timer here
+
+        // go from start to end
+        let startNow = geometryRef.current.drawRange.start;
+        if (startNow < geometryRef.current.index!.count) {
+          geometryRef.current.setDrawRange(
+            Math.round(startNow + delta * 30 * 16),
+            geometryRef.current.index!.count
+          );
+        } else {
+          // when lets say 10 second
+          // pass by start the animation again
+          // if (delta > 10) {
+          //   geometryRef.current.setDrawRange(0, 0);
+          // }
+        }
+      } else {
+        geometryRef.current.setDrawRange(
+          0,
+          Math.round(endNow + delta * 30 * 16)
+        );
+      }
     }
   });
 
-  if (curve) {
+  if (show && curve) {
     return (
       <mesh>
-        <tubeGeometry ref={geometryRef} args={[curve, 32, dotDensity, 32]} />
+        <tubeBufferGeometry
+          ref={geometryRef}
+          args={[curve, 32, dotDensity, 4]}
+        />
         <meshBasicMaterial color="#E879F9" />
       </mesh>
     );
@@ -272,7 +302,7 @@ const App: React.FC<AppProps> = () => {
             <OrbitControls />
             <ambientLight intensity={0.5} />
             <directionalLight
-              color="#FAF5FF"
+              color="#ffffff"
               position={[0, 2, 4]}
               intensity={2}
             />
