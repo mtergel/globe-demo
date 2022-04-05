@@ -1,15 +1,23 @@
-import { CubicBezierLine, OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { InstancedMesh, Object3D, Vector3 } from "three";
+import {
+  CubicBezierCurve3,
+  InstancedMesh,
+  Object3D,
+  TubeGeometry,
+  Vector3,
+} from "three";
 import { DEG2RAD } from "three/src/math/MathUtils";
 import "./App.css";
+import data from "./data.json";
 import glowUrl from "./glow.svg";
 import worldUrl from "./map.png";
+import * as THREE from "three";
 
 interface AppProps {}
 
-const rows = 90;
+const rows = 120;
 const dotDensity = 0.01;
 const globeRadius = 2;
 
@@ -61,6 +69,114 @@ const Countries: React.FC<{ circleData: { lat: number; long: number }[] }> = ({
   );
 };
 
+interface PullRequestsProps {
+  index: number;
+}
+
+const getCurve = (
+  startLat: number,
+  startLong: number,
+  endLat: number,
+  endLong: number
+) => {
+  const curveStart = createCircle(startLat, startLong);
+  let startPoint = new Vector3(
+    curveStart.position[0],
+    curveStart.position[1],
+    curveStart.position[2]
+  );
+
+  const curveEnd = createCircle(endLat, endLong);
+
+  let endPoint = new Vector3(
+    curveEnd.position[0],
+    curveEnd.position[1],
+    curveEnd.position[2]
+  );
+
+  let dist = startPoint.distanceTo(endPoint);
+  let xC = 0.5 * (curveStart.position[0] + curveEnd.position[0]);
+  let yC = 0.5 * (curveStart.position[1] + curveEnd.position[1]);
+  let zC = 0.5 * (curveStart.position[2] + curveEnd.position[2]);
+
+  let midPoint = new Vector3(xC, yC, zC);
+
+  // tweak this value based on the distance
+  let smoothDist = map(
+    dist,
+    0,
+    globeRadius / (dist * 0.5),
+    0,
+    globeRadius / dist
+  );
+
+  midPoint.setLength(globeRadius * smoothDist);
+  let curveA = startPoint.clone();
+  let curveB = endPoint.clone();
+  curveA.add(midPoint);
+  curveB.add(midPoint);
+
+  curveA.setLength(globeRadius * smoothDist);
+  curveB.setLength(globeRadius * smoothDist);
+
+  return {
+    startLocation: startPoint,
+    ctrl1: curveA,
+    ctrl2: curveB,
+    endLocation: endPoint,
+  };
+};
+const PullRequests: React.FC<PullRequestsProps> = ({ index }) => {
+  const item = data[index];
+  const [curve, setCurve] = useState<CubicBezierCurve3 | null>(null);
+  const geometryRef = useRef<TubeGeometry>(null);
+
+  useEffect(() => {
+    const { startLocation, ctrl1, ctrl2, endLocation } = getCurve(
+      item.gm.lat,
+      item.gm.lon,
+      item.gop.lat,
+      item.gop.lon
+    );
+
+    const _curve = new CubicBezierCurve3(
+      startLocation,
+      ctrl1,
+      ctrl2,
+      endLocation
+    );
+    setCurve(_curve);
+
+    // eslint-disable-next-line
+  }, []);
+
+  useFrame((i) => {
+    if (geometryRef.current) {
+      geometryRef.current.setDrawRange(
+        0,
+        THREE.MathUtils.lerp(
+          geometryRef.current.drawRange.count === Infinity
+            ? 0
+            : geometryRef.current.drawRange.count,
+          geometryRef.current.index!.count,
+          0.01
+        )
+      );
+    }
+  });
+
+  if (curve) {
+    return (
+      <mesh>
+        <tubeGeometry ref={geometryRef} args={[curve, 32, dotDensity, 32]} />
+        <meshBasicMaterial color="#E879F9" />
+      </mesh>
+    );
+  }
+
+  return null;
+};
+
 const IMAGE_WIDTH = 400;
 const IMAGE_HEIGHT = 200;
 
@@ -78,6 +194,7 @@ const coords2pix = (lat: number, long: number) => {
   return { x, y };
 };
 
+// clean this up
 function map(
   x: number,
   in_min: number,
@@ -144,37 +261,6 @@ const App: React.FC<AppProps> = () => {
     // eslint-disable-next-line
   }, [image]);
 
-  const curveStart = createCircle(46.86, 103.83);
-  let startPoint = new Vector3(
-    curveStart.position[0],
-    curveStart.position[1],
-    curveStart.position[2]
-  );
-
-  const curveEnd = createCircle(36, 138);
-  let endPoint = new Vector3(
-    curveEnd.position[0],
-    curveEnd.position[1],
-    curveEnd.position[2]
-  );
-
-  let dist = startPoint.distanceTo(endPoint);
-  let xC = 0.5 * (curveStart.position[0] + curveEnd.position[0]);
-  let yC = 0.5 * (curveStart.position[1] + curveEnd.position[1]);
-  let zC = 0.5 * (curveStart.position[2] + curveEnd.position[2]);
-
-  let midPoint = new Vector3(xC, yC, zC);
-  let smoothDist = map(dist, 0, 5, 0, 15 / dist);
-
-  midPoint.setLength(globeRadius * smoothDist);
-  let curveA = startPoint.clone();
-  let curveB = endPoint.clone();
-  curveA.add(midPoint);
-  curveB.add(midPoint);
-
-  curveA.setLength(globeRadius * smoothDist);
-  curveB.setLength(globeRadius * smoothDist);
-
   return (
     <div className="container">
       <div className="hero">
@@ -208,21 +294,15 @@ const App: React.FC<AppProps> = () => {
             {circleData && circleData.length > 0 && (
               <>
                 <Countries circleData={circleData} />
-                <mesh {...curveStart}>
-                  <sphereBufferGeometry args={[dotDensity * 2]} />
-                  <meshStandardMaterial color="orange" />
-                </mesh>
-                <mesh {...curveEnd}>
-                  <sphereBufferGeometry args={[dotDensity * 2]} />
-                  <meshStandardMaterial color="orange" />
-                </mesh>
-                <CubicBezierLine
-                  start={curveStart.position}
-                  end={curveEnd.position}
-                  midA={curveA}
-                  midB={curveB}
-                  color="#E879F9"
-                />
+                {data.map((i, index) => {
+                  if (
+                    data[index].gm.lat === data[index].gop.lat &&
+                    data[index].gm.lon === data[index].gop.lon
+                  ) {
+                    return null;
+                  }
+                  return <PullRequests key={index} index={index} />;
+                })}
               </>
             )}
           </Canvas>
