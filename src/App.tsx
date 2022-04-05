@@ -102,13 +102,7 @@ const getCurve = (
   let midPoint = new Vector3(xC, yC, zC);
 
   // tweak this value based on the distance
-  let smoothDist = map(
-    dist,
-    0,
-    globeRadius / (dist * 0.5),
-    0,
-    globeRadius / dist
-  );
+  let smoothDist = map(dist, 0, 4, 1.5, dist / globeRadius + globeRadius / 4);
 
   midPoint.setLength(globeRadius * smoothDist);
   let curveA = startPoint.clone();
