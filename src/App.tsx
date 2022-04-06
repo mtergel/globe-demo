@@ -154,7 +154,7 @@ const PullRequests: React.FC<PullRequestsProps> = ({ index }) => {
     // eslint-disable-next-line
   }, [show]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (geometryRef.current && show) {
       let endNow =
         geometryRef.current.drawRange.count === Infinity
@@ -167,20 +167,17 @@ const PullRequests: React.FC<PullRequestsProps> = ({ index }) => {
         let startNow = geometryRef.current.drawRange.start;
         if (startNow < geometryRef.current.index!.count) {
           geometryRef.current.setDrawRange(
-            Math.round(startNow + delta * 30 * 16),
+            Math.round(startNow + delta * 60 * 16),
             geometryRef.current.index!.count
           );
         } else {
-          // when lets say 10 second
-          // pass by start the animation again
-          // if (delta > 10) {
-          //   geometryRef.current.setDrawRange(0, 0);
-          // }
+          // loop it
+          setShow(false);
         }
       } else {
         geometryRef.current.setDrawRange(
           0,
-          Math.round(endNow + delta * 30 * 16)
+          Math.round(endNow + delta * 60 * 16)
         );
       }
     }
