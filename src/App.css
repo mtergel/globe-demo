@@ -44,3 +44,17 @@
 .hidden {
   display: none;
 }
+
+.data-info {
+  position: absolute;
+  z-index: 3;
+  max-width: 450px;
+  background-color: rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  padding: 16px 32px 8px;
+  top: 0;
+  left: 0;
+  border-radius: 6px;
+  display: block;
+  color:white;
+}

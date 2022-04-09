@@ -2,6 +2,7 @@ import { OrbitControls, Stats } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import { DEG2RAD } from "three/src/math/MathUtils";
+import shallow from "zustand/shallow";
 import "./App.css";
 import {
   coords2pix,
@@ -14,6 +15,7 @@ import {
 import Countries from "./components/Countries";
 import PullRequestArc from "./components/PullRequestArc";
 import PullRequests from "./components/PullRequests";
+import { useStore } from "./components/store";
 import glowUrl from "./glow.svg";
 import worldUrl from "./map.png";
 
@@ -22,8 +24,14 @@ interface AppProps {}
 const App: React.FC<AppProps> = () => {
   const [image, setImage] = useState<CanvasRenderingContext2D | null>(null);
   const worldCanvas = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [circleData, setCircleData] = useState<{ long: number; lat: number }[]>(
     []
+  );
+
+  const { hovered } = useStore(
+    (state) => ({ hovered: state.hovered }),
+    shallow
   );
 
   useEffect(() => {
@@ -76,32 +84,12 @@ const App: React.FC<AppProps> = () => {
     // eslint-disable-next-line
   }, [image]);
 
-  // const dataFormatted = useMemo(() => {
-  //   let points: PullRequestType[] = [];
-  //   let arcs: PullRequestType[] = [];
-
-  //   data.forEach((i: PullRequestType) => {
-  //     if (i.gm.lat === i.gop.lat && i.gm.lon && i.gop.lon) {
-  //       points.push(i);
-  //     } else {
-  //       arcs.push(i);
-  //     }
-  //   });
-
-  //   return {
-  //     points,
-  //     arcs,
-  //   };
-  // }, []);
-
-  // console.log(dataFormatted);
-
   return (
     <div className="container">
       <div className="hero">
         <div></div>
         <img alt="hero-glow" src={glowUrl} className="hero-glow" />
-        <div className="globe-canvas-container">
+        <div className="globe-canvas-container" ref={containerRef}>
           <canvas
             id="world"
             height={IMAGE_HEIGHT}
@@ -131,35 +119,15 @@ const App: React.FC<AppProps> = () => {
                 <Countries circleData={circleData} />
                 <PullRequests />
                 <PullRequestArc />
-                {/* {data.map((i) => {
-                  if (
-                    i.gm.lat === i.gop.lat &&
-                    i.gm.lon === i.gop.lon
-                  ) {
-                    return <PullRequests 
-                      key={i.pr}
-                      circleData={{
-                        lat: i.gm.lat,
-                        long: i.gm.lon
-                      }}
-                    />
-                  } else {return null;}
-                })} */}
-                {/* {data.map((i, index) => (
-                  <>
-                    if (
-                    data[index].gm.lat === data[index].gop.lat &&
-                    data[index].gm.lon === data[index].gop.lon
-                  ) {
-                    return null;
-                  }
-                  return <PullRequests key={index} index={index} />;
-                  </>
-                ))} */}
               </>
             )}
             <Stats showPanel={0} />
           </Canvas>
+          {hovered && (
+            <div className="data-info">
+              #{hovered.pr} {hovered.nwo}
+            </div>
+          )}
         </div>
       </div>
     </div>

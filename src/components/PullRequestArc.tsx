@@ -1,8 +1,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import { CubicBezierCurve3, TubeGeometry } from "three";
+import shallow from "zustand/shallow";
 import data from "../data.json";
 import { dotDensity } from "./const";
+import { useStore } from "./store";
 import { getCurve, PullRequestType } from "./utils";
 
 const PullRequestArc = () => {
@@ -26,6 +28,19 @@ const Arc: React.FC<ArcProps> = ({ pr }) => {
   const geometryRef = useRef<TubeGeometry>(null);
   const [show, setShow] = useState(false);
   const [stop, setStop] = useState(false);
+
+  const { setHovered } = useStore(
+    (state) => ({ setHovered: state.setHovered }),
+    shallow
+  );
+  const [hovered, set] = useState<number | undefined>(undefined);
+
+  if (hovered) {
+    setHovered(data.points[hovered]);
+  } else {
+    setHovered(null);
+  }
+
   useEffect(() => {
     const { startLocation, ctrl1, ctrl2, endLocation } = getCurve(
       pr.gm.lat,

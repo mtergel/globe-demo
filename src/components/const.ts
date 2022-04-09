@@ -1,6 +1,6 @@
 // rendering circles on globe
 export const rows = 120;
-export const dotDensity = 0.01;
+export const dotDensity = 0.005;
 export const globeRadius = 2;
 
 // countries alpha map
